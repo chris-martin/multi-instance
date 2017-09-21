@@ -59,6 +59,25 @@ import qualified Data.Semigroup
 --  Semigroup
 --------------------------------------------------------------------------------
 
+-- | Akin to the 'Data.Semigroup.Semigroup' class, but with the addition of the
+-- phantom type parameter @x@ which lets you specify /which/ semigroup to use.
+--
+-- For example, the integers form a semigroup via either 'Addition' or
+-- 'Multiplication':
+--
+-- >>> :set -XFlexibleContexts -XTypeApplications
+--
+-- >>> multi'append @Addition (6 :: Integer) (7 :: Integer)
+-- 13
+--
+-- >>> multi'append @Multiplication (6 :: Integer) (7 :: Integer)
+-- 42
+--
+-- >>> multi'stimes @Addition (3 :: Natural) (4 :: Integer)
+-- 12
+--
+-- >>> multi'stimes @Multiplication (3 :: Natural) (4 :: Integer)
+-- 64
 class MultiSemigroup x a where
 
   -- | An associative operation.
@@ -98,6 +117,25 @@ class MultiSemigroup x a where
 --  Monoid
 --------------------------------------------------------------------------------
 
+-- | Akin to the 'Data.Monoid.Monoid class, but with the addition of the
+-- phantom type parameter @x@ which lets you specify /which/ monoid to use.
+--
+-- For example, the integers form a monoid via either 'Addition' or
+-- 'Multiplication':
+--
+-- >>> :set -XFlexibleContexts -XTypeApplications
+--
+-- >>> multi'fold @Addition ([] :: [Integer])
+-- 0
+--
+-- >>> multi'fold @Addition ([2,3,5] :: [Integer])
+-- 10
+--
+-- >>> multi'fold @Multiplication ([] :: [Integer])
+-- 1
+--
+-- >>> multi'fold @Multiplication ([2,3,5] :: [Integer])
+-- 30
 class MultiSemigroup x a => MultiMonoid x a where
 
   -- | Identity of 'multi'append'.
