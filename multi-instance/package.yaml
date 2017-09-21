@@ -1,0 +1,56 @@
+name: multi-instance
+version: 0.0.0.1
+github: chris-martin/multi-instance
+
+synopsis: |
+  ...
+
+description: |
+  ...
+
+category: ...
+
+author:     Chris Martin <ch.martin@gmail.com>
+maintainer: Chris Martin <ch.martin@gmail.com>
+
+license: Apache-2.0
+license-file: license.txt
+
+ghc-options:
+  - -Wall
+
+library:
+  source-dirs: src
+  exposed-modules:
+
+    - Multi
+
+    - Multi.Foldable
+    - Multi.Monoid
+    - Multi.Phantoms
+    - Multi.Semigroup
+
+    - Multi.Internal.Base
+
+dependencies:
+  - base
+
+tests:
+
+  doctest:
+    source-dirs: test
+    main: doctest.hs
+    ghc-options:
+      - -threaded
+    dependencies:
+      - multi-instance
+      - doctest
+
+  hedgehog:
+    source-dirs: test
+    main: hedgehog.hs
+    ghc-options:
+      - -threaded
+    dependencies:
+      - multi-instance
+      - hedgehog
