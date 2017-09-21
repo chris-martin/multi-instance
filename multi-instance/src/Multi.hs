@@ -61,14 +61,16 @@ import Data.Function       (flip)
 import Data.List.NonEmpty  (NonEmpty (..))
 import Data.Maybe          (Maybe (..), fromMaybe)
 import Data.Ord            (Ord (..), Ordering (..))
-import Data.Semigroup      (Semigroup (..))
 import GHC.Exts            (build)
 import Numeric.Natural     (Natural)
 import Prelude             (Int, Integer, Integral, Num (..),
                             errorWithoutStackTrace, even, pred, quot, ($!))
 
-import qualified Data.Foldable as Foldable
-import qualified Data.List     as List
+import qualified Data.Foldable
+import qualified Data.List
+import qualified Data.List.NonEmpty
+import qualified Data.Monoid
+import qualified Data.Semigroup
 
 
 --------------------------------------------------------------------------------
@@ -77,16 +79,22 @@ import qualified Data.List     as List
 
 class MultiSemigroup x a where
 
-  -- | An associative operation. Akin to '<>'.
+  -- | An associative operation.
+  --
+  -- /Akin to 'Data.Semigroup.<>'./
   multi'append :: a -> a -> a
 
-  -- | Reduce a non-empty list with '<>'. Akin to 'sconcat'.
+  -- | Reduce a non-empty list with 'multi'append'.
+  --
+  -- /Akin to 'Data.Semigroup.sconcat'./
   multi'sconcat :: NonEmpty a -> a
   multi'sconcat (a :| as) = go a as where
     go b (c:cs) = multi'append @x b (go c cs)
     go b []     = b
 
-  -- | Repeat a value @n@ times. Akin to 'stimes'.
+  -- | Repeat a value @n@ times.
+  --
+  -- /Akin to 'Data.Semigroup.stimes'./
   multi'stimes :: Integral b => b -> a -> a
   multi'stimes y0 x0
     | y0 <= 0   = errorWithoutStackTrace
@@ -110,10 +118,14 @@ class MultiSemigroup x a where
 
 class MultiSemigroup x a => MultiMonoid x a where
 
-  -- | Identity of 'multi'append'. Akin to 'mempty'.
+  -- | Identity of 'multi'append'.
+  --
+  -- /Akin to 'Data.Monoid.mempty'./
   multi'empty :: a
 
-  -- | Fold a list using the monoid. Akin to 'mconcat'.
+  -- | Fold a list using the monoid.
+  --
+  -- /Akin to 'Data.Monoid.mconcat'./
   multi'mconcat :: [a] -> a
   multi'mconcat = multi'foldr (multi'append @x) (multi'empty @x)
 
@@ -122,39 +134,51 @@ class MultiSemigroup x a => MultiMonoid x a where
 --  Foldable
 --------------------------------------------------------------------------------
 
--- | Combine the elements of a structure using a monoid. Akin to
--- 'Foldable.fold'.
+-- | Combine the elements of a structure using a monoid.
+--
+-- /Akin to 'Data.Foldable.fold'./
 multi'fold :: forall x t m. (MultiMonoid x m, Foldable t) => t m -> m
 multi'fold = multi'foldMap @x id
 
 -- | Map each element of the structure to a monoid, and combine the results.
--- Akin to 'Foldable.foldMap'.
+
+-- /Akin to 'Data.Foldable.foldMap'./
 multi'foldMap :: forall x t m a. (MultiMonoid x m, Foldable t)
               => (a -> m) -> t a -> m
 multi'foldMap f = multi'foldr (multi'append @x . f) (multi'empty @x)
 
--- | Right-associative fold of a structure. Akin to 'Foldable.foldr'.
+-- | Right-associative fold of a structure.
+--
+-- /Akin to 'Data.Foldable.foldr'./
 multi'foldr :: Foldable t => (a -> b -> b) -> b -> t a -> b
 multi'foldr f z t = multi'foldMap @ArrowComposition f t z
 
 -- | Right-associative fold of a structure, but with strict application of
--- the operator. Akin to 'Foldable.foldr''.
+-- the operator.
+--
+-- /Akin to 'Data.Foldable.foldr''./
 multi'foldr' :: Foldable t => (a -> b -> b) -> b -> t a -> b
 multi'foldr' f z0 xs = multi'foldl f' id xs z0
   where f' k x z = k $! f x z
 
--- | Left-associative fold of a structure. Akin to 'Foldable.foldl'.
+-- | Left-associative fold of a structure.
+--
+-- /Akin to 'Data.Foldable.foldl'./
 multi'foldl :: Foldable t => (b -> a -> b) -> b -> t a -> b
 multi'foldl f z t = multi'foldMap @(MultiDual ArrowComposition) (flip f) t z
 
 -- | Left-associative fold of a structure but with strict application of
--- the operator. Akin to 'Foldable.foldl''.
+-- the operator.
+--
+-- /Akin to 'Data.Foldable.foldl''./
 multi'foldl' :: Foldable t => (b -> a -> b) -> b -> t a -> b
 multi'foldl' f z0 xs = multi'foldr f' id xs z0
   where f' x k z = k $! f z x
 
 -- | A variant of 'multi'foldr' that has no base case, and thus may only be
--- applied to non-empty structures. Akin to 'Foldable.foldr1'.
+-- applied to non-empty structures.
+--
+-- /Akin to 'Data.Foldable.foldr1'./
 multi'foldr1 :: Foldable t => (a -> a -> a) -> t a -> a
 multi'foldr1 f xs =
   fromMaybe (errorWithoutStackTrace "foldr1: empty structure")
@@ -165,7 +189,9 @@ multi'foldr1 f xs =
                      Just y  -> f x y)
 
 -- | A variant of 'multi'foldl' that has no base case, and thus may only be
--- applied to non-empty structures. Akin to 'Foldable.foldl1'.
+-- applied to non-empty structures.
+--
+-- /Akin to 'Data.Foldable.foldl1'./
 multi'foldl1 :: Foldable t => (a -> a -> a) -> t a -> a
 multi'foldl1 f xs =
   fromMaybe (errorWithoutStackTrace "foldl1: empty structure")
@@ -175,110 +201,147 @@ multi'foldl1 f xs =
                      Nothing -> y
                      Just x  -> f x y)
 
--- | List of elements of a structure, from left to right. Akin to
--- 'Foldable.toList'.
+-- | List of elements of a structure, from left to right.
+--
+-- /Akin to 'Data.Foldable.toList'./
 multi'toList :: Foldable t => t a -> [a]
-multi'toList t = build (\ c n -> multi'foldr c n t)
+multi'toList t = build (\c n -> multi'foldr c n t)
 
--- | Test whether the structure is empty. Akin to 'Foldable.null'.
+-- | Test whether the structure is empty.
+--
+-- /Akin to 'Data.Foldable.null'./
 multi'null :: Foldable t => t a -> Bool
 multi'null = multi'foldr (\_ _ -> False) True
 
--- | Returns the size/length of a finite structure as an 'Int'. Akin to
--- 'Foldable.length'.
+-- | Returns the size/length of a finite structure as an 'Int'.
+--
+-- /Akin to 'Data.Foldable.length'./
 multi'length :: Foldable t => t a -> Int
 multi'length = multi'foldl' (\c _ -> c + 1) 0
 
--- | Does the element occur in the structure? Akin to 'Foldable.elem'.
-multi'elem :: Foldable t => Eq a => a -> t a -> Bool
+-- | Does the element occur in the structure?
+--
+-- /Akin to 'Data.Foldable.elem'./
+multi'elem :: (Foldable t, Eq a) => a -> t a -> Bool
 multi'elem = multi'any . (==)
 
--- | The largest element of a non-empty structure. Akin to 'Foldable.maximum'.
+-- | The largest element of a non-empty structure.
+--
+-- /Akin to 'Data.Foldable.maximum'./
 multi'maximum :: forall t a. (Foldable t, Ord a) => t a -> a
 multi'maximum =
   fromMaybe (errorWithoutStackTrace "maximum: empty structure") .
   (multi'foldMap @MaxMaybe) (Just @a)
 
--- | The least element of a non-empty structure. Akin to 'Foldable.minimum'.
+-- | The least element of a non-empty structure.
+--
+-- /Akin to 'Data.Foldable.minimum'./
 multi'minimum :: forall t a. (Foldable t, Ord a) => t a -> a
 multi'minimum =
   fromMaybe (errorWithoutStackTrace "minimum: empty structure") .
   (multi'foldMap @MinMaybe) (Just @a)
 
--- | The sum of the numbers in a structure. Akin to 'Foldable.sum'.
+-- | The sum of the numbers in a structure.
+--
+-- This is equivalent to
+--
+--   > multi'fold @Addition
+--
+-- /Akin to 'Data.Foldable.sum'./
 multi'sum :: (Foldable t, MultiMonoid Addition a) => t a -> a
 multi'sum = multi'fold @Addition
 
--- | The product of the numbers of a structure. Akin to 'Foldable.product'
+-- | The product of the numbers of a structure.
+--
+-- /Akin to 'Data.Foldable.product'./
 multi'product :: (Foldable t, MultiMonoid Multiplication a) => t a -> a
 multi'product = multi'fold @Multiplication
 
 -- | Map each element of a structure to an action, evaluate these
--- actions from left to right, and ignore the results. Akin to
--- 'Foldable.traverse_'.
-multi'traverse_ :: forall t f a b. (Foldable t, Applicative f)
-                => (a -> f b) -> t a -> f ()
+-- actions from left to right, and ignore the results.
+--
+-- /Akin to 'Data.Foldable.traverse_'./
+multi'traverse_ :: (Foldable t, Applicative f) => (a -> f b) -> t a -> f ()
 multi'traverse_ f = multi'foldr ((*>) . f) (pure ())
 
--- | 'multi'traverse_' with its arguments flipped. Akin to 'Foldable.for_'.
-multi'for_ :: forall t f a b. (Foldable t, Applicative f)
-           => t a -> (a -> f b) -> f ()
+-- | 'multi'traverse_' with its arguments flipped.
+--
+-- /Akin to 'Data.Foldable.for_'./
+multi'for_ :: (Foldable t, Applicative f) => t a -> (a -> f b) -> f ()
 multi'for_ = flip multi'traverse_
 
 -- | Evaluate each action in the structure from left to right, and ignore the
--- results. Akin to 'Foldable.sequenceA_'.
-multi'sequence_ :: forall t f a. (Foldable t, Applicative f)
-                => t (f a) -> f ()
+-- results.
+--
+-- /Akin to 'Data.Foldable.sequenceA_'./
+multi'sequence_ :: (Foldable t, Applicative f) => t (f a) -> f ()
 multi'sequence_ = multi'foldr (*>) (pure ())
 
--- | The sum of a collection of actions, generalizing 'multi'concat'. Akin to
--- 'Foldable.asum'.
-multi'asum :: forall t f a. (Foldable t, Alternative f) => t (f a) -> f a
+-- | The sum of a collection of actions, generalizing 'multi'concat'.
+--
+-- /Akin to 'Data.Foldable.asum'./
+multi'asum :: (Foldable t, Alternative f) => t (f a) -> f a
 multi'asum = multi'foldr (<|>) empty
 
 -- | Map a function over all the elements of a container and concatenate
--- the resulting lists. Akin to 'Foldable.concatMap'.
-multi'concatMap :: forall t a b. Foldable t => (a -> [b]) -> t a -> [b]
+-- the resulting lists.
+--
+-- /Akin to 'Data.Foldable.concatMap'./
+multi'concatMap :: Foldable t => (a -> [b]) -> t a -> [b]
 multi'concatMap f xs =
   build (\c n -> multi'foldr (\x b -> multi'foldr c b (f x)) n xs)
 
--- | The conjunction of a container of Bools. Akin to 'Foldable.and'.
+-- | The conjunction of a container of Bools.
+--
+-- /Akin to 'Data.Foldable.and'./
 multi'and :: Foldable t => t Bool -> Bool
 multi'and = multi'fold @And
 
--- | The disjunction of a container of Bools. Akin to 'Foldable.or'.
+-- | The disjunction of a container of Bools.
+--
+-- /Akin to 'Data.Foldable.or'./
 multi'or :: Foldable t => t Bool -> Bool
 multi'or = multi'fold @Or
 
 -- | Determines whether any element of the structure satisfies the predicate.
--- Akin to 'Foldable.any'.
+--
+-- /Akin to 'Data.Foldable.any'./
 multi'any :: Foldable t => (a -> Bool) -> t a -> Bool
 multi'any = multi'foldMap @Or
 
 -- | Determines whether all elements of the structure satisfy the predicate.
--- Akin to 'Foldable.all'.
+--
+-- /Akin to 'Data.Foldable.all'./
 multi'all :: Foldable t => (a -> Bool) -> t a -> Bool
 multi'all = multi'foldMap @And
 
 -- | The largest element of a non-empty structure with respect to the given
--- comparison function. Akin to 'Foldable.maximumBy'.
+-- comparison function.
+--
+-- /Akin to 'Data.Foldable.maximumBy'./
 multi'maximumBy :: Foldable t => (a -> a -> Ordering) -> t a -> a
 multi'maximumBy cmp = multi'foldr1 max'
   where max' x y = case cmp x y of GT -> x; _ -> y
 
 -- | The least element of a non-empty structure with respect to the given
--- comparison function. Akin to 'Foldable.minimumBy'.
+-- comparison function.
+--
+-- /Akin to 'Data.Foldable.minimumBy'./
 multi'minimumBy :: Foldable t => (a -> a -> Ordering) -> t a -> a
 multi'minimumBy cmp = multi'foldr1 min'
   where min' x y = case cmp x y of GT -> y; _ -> x
 
--- | The negation of 'multi'elem'. Akin to 'Foldable.notElem'.
+-- | The negation of 'multi'elem'.
+--
+-- /kin to 'Data.Foldable.notElem'./
 multi'notElem :: (Foldable t, Eq a) => a -> t a -> Bool
 multi'notElem x = not . multi'elem x
 
 -- | The 'find' function takes a predicate and a structure and returns
 -- the leftmost element of the structure matching the predicate, or
--- 'Nothing' if there is no such element. Akin to 'Foldable.find'.
+-- 'Nothing' if there is no such element.
+--
+-- /Akin to 'Data.Foldable.find'./
 multi'find :: Foldable t => (a -> Bool) -> t a -> Maybe a
 multi'find p = multi'foldMap @First (\x -> if p x then Just x else Nothing)
 
@@ -290,6 +353,9 @@ multi'find p = multi'foldMap @First (\x -> if p x then Just x else Nothing)
 instance MultiSemigroup x ()
   where multi'append _ _ = ()
 
+instance MultiMonoid x ()
+  where multi'empty = ()
+
 
 --------------------------------------------------------------------------------
 --  Default
@@ -297,8 +363,12 @@ instance MultiSemigroup x ()
 
 data Default
 
-instance Semigroup a => MultiSemigroup Default a
-  where multi'append = (<>)
+instance Data.Semigroup.Semigroup a => MultiSemigroup Default a
+  where multi'append = (Data.Semigroup.<>)
+
+instance (Data.Semigroup.Semigroup a, Data.Monoid.Monoid a) =>
+    MultiMonoid Default a
+  where multi'empty = Data.Monoid.mempty
 
 
 --------------------------------------------------------------------------------
@@ -443,9 +513,12 @@ instance Monad m => MultiMonoid ArrowComposition (Kleisli m a a)
 --------------------------------------------------------------------------------
 
 instance MultiSemigroup Addition [a]
-  where multi'append = (List.++)
+  where multi'append = multi'append @Default
 instance MultiMonoid Addition [a]
-  where multi'empty = []
+  where multi'empty = multi'empty @Default
+
+instance MultiSemigroup Addition (NonEmpty a)
+  where multi'append = multi'append @Default
 
 
 --------------------------------------------------------------------------------
