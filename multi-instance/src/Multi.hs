@@ -68,7 +68,7 @@ import Prelude             (Int, Integer, Integral, Num (..),
                             errorWithoutStackTrace, even, pred, quot, ($!))
 
 import qualified Data.Foldable as Foldable
-import qualified Data.List as List
+import qualified Data.List     as List
 
 
 --------------------------------------------------------------------------------
