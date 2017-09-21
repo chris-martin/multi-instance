@@ -25,7 +25,6 @@ module Multi
   , And, Or, multi'and, multi'or, multi'any, multi'all
   -- * Min and max
   , Min, Max, MinMaybe, MaxMaybe
-  , multi'maximum, multi'minimum, multi'maximumBy, multi'minimumBy
   -- * First and last
   , First, Last
   -- * Arrow composition
@@ -34,41 +33,24 @@ module Multi
   , MultiDual
   -- * Monoidal folds
   , multi'fold, multi'foldMap
-  -- * Right-associative folds
-  , multi'foldr, multi'foldr', multi'foldr1
-  -- * Left-associative folds
-  , multi'foldl, multi'foldl', multi'foldl1
-  -- * List-producing folds
-  , multi'toList, multi'concatMap
-  -- * Length
-  , multi'null, multi'length
   -- * Looking for elements
-  , multi'elem, multi'notElem, multi'find
-  -- * Applicative sequencing
-  , multi'traverse_, multi'for_, multi'sequence_
-  -- * Alternative sequencing
-  , multi'asum
+  , multi'find
   ) where
 
-import Control.Applicative (Alternative (..), Applicative (..))
-import Control.Arrow       (Kleisli)
-import Control.Category    (id, (.))
-import Control.Monad       (Monad)
-import Data.Bool           (Bool (..), not, otherwise, (&&), (||))
-import Data.Eq             (Eq (..))
-import Data.Foldable       (Foldable)
-import Data.Function       (flip)
-import Data.List.NonEmpty  (NonEmpty (..))
-import Data.Maybe          (Maybe (..), fromMaybe)
-import Data.Ord            (Ord (..), Ordering (..))
-import GHC.Exts            (build)
-import Numeric.Natural     (Natural)
-import Prelude             (Int, Integer, Integral, Num (..),
-                            errorWithoutStackTrace, even, pred, quot, ($!))
+import Control.Arrow      (Kleisli)
+import Control.Category   (id, (.))
+import Control.Monad      (Monad)
+import Data.Bool          (Bool (..), otherwise, (&&), (||))
+import Data.Eq            (Eq (..))
+import Data.Foldable      (Foldable)
+import Data.List.NonEmpty (NonEmpty (..))
+import Data.Maybe         (Maybe (..))
+import Data.Ord           (Ord (..))
+import Numeric.Natural    (Natural)
+import Prelude            (Int, Integer, Integral, Num (..),
+                           errorWithoutStackTrace, even, pred, quot)
 
 import qualified Data.Foldable
-import qualified Data.List
-import qualified Data.List.NonEmpty
 import qualified Data.Monoid
 import qualified Data.Semigroup
 
@@ -127,7 +109,7 @@ class MultiSemigroup x a => MultiMonoid x a where
   --
   -- /Akin to 'Data.Monoid.mconcat'./
   multi'mconcat :: [a] -> a
-  multi'mconcat = multi'foldr (multi'append @x) (multi'empty @x)
+  multi'mconcat = Data.Foldable.foldr (multi'append @x) (multi'empty @x)
 
 
 --------------------------------------------------------------------------------
@@ -145,107 +127,11 @@ multi'fold = multi'foldMap @x id
 -- /Akin to 'Data.Foldable.foldMap'./
 multi'foldMap :: forall x t m a. (MultiMonoid x m, Foldable t)
               => (a -> m) -> t a -> m
-multi'foldMap f = multi'foldr (multi'append @x . f) (multi'empty @x)
-
--- | Right-associative fold of a structure.
---
--- /Akin to 'Data.Foldable.foldr'./
-multi'foldr :: Foldable t => (a -> b -> b) -> b -> t a -> b
-multi'foldr f z t = multi'foldMap @ArrowComposition f t z
-
--- | Right-associative fold of a structure, but with strict application of
--- the operator.
---
--- /Akin to 'Data.Foldable.foldr''./
-multi'foldr' :: Foldable t => (a -> b -> b) -> b -> t a -> b
-multi'foldr' f z0 xs = multi'foldl f' id xs z0
-  where f' k x z = k $! f x z
-
--- | Left-associative fold of a structure.
---
--- /Akin to 'Data.Foldable.foldl'./
-multi'foldl :: Foldable t => (b -> a -> b) -> b -> t a -> b
-multi'foldl f z t = multi'foldMap @(MultiDual ArrowComposition) (flip f) t z
-
--- | Left-associative fold of a structure but with strict application of
--- the operator.
---
--- /Akin to 'Data.Foldable.foldl''./
-multi'foldl' :: Foldable t => (b -> a -> b) -> b -> t a -> b
-multi'foldl' f z0 xs = multi'foldr f' id xs z0
-  where f' x k z = k $! f z x
-
--- | A variant of 'multi'foldr' that has no base case, and thus may only be
--- applied to non-empty structures.
---
--- /Akin to 'Data.Foldable.foldr1'./
-multi'foldr1 :: Foldable t => (a -> a -> a) -> t a -> a
-multi'foldr1 f xs =
-  fromMaybe (errorWithoutStackTrace "foldr1: empty structure")
-            (multi'foldr mf Nothing xs)
-  where
-    mf x m = Just (case m of
-                     Nothing -> x
-                     Just y  -> f x y)
-
--- | A variant of 'multi'foldl' that has no base case, and thus may only be
--- applied to non-empty structures.
---
--- /Akin to 'Data.Foldable.foldl1'./
-multi'foldl1 :: Foldable t => (a -> a -> a) -> t a -> a
-multi'foldl1 f xs =
-  fromMaybe (errorWithoutStackTrace "foldl1: empty structure")
-            (multi'foldl mf Nothing xs)
-  where
-    mf m y = Just (case m of
-                     Nothing -> y
-                     Just x  -> f x y)
-
--- | List of elements of a structure, from left to right.
---
--- /Akin to 'Data.Foldable.toList'./
-multi'toList :: Foldable t => t a -> [a]
-multi'toList t = build (\c n -> multi'foldr c n t)
-
--- | Test whether the structure is empty.
---
--- /Akin to 'Data.Foldable.null'./
-multi'null :: Foldable t => t a -> Bool
-multi'null = multi'foldr (\_ _ -> False) True
-
--- | Returns the size/length of a finite structure as an 'Int'.
---
--- /Akin to 'Data.Foldable.length'./
-multi'length :: Foldable t => t a -> Int
-multi'length = multi'foldl' (\c _ -> c + 1) 0
-
--- | Does the element occur in the structure?
---
--- /Akin to 'Data.Foldable.elem'./
-multi'elem :: (Foldable t, Eq a) => a -> t a -> Bool
-multi'elem = multi'any . (==)
-
--- | The largest element of a non-empty structure.
---
--- /Akin to 'Data.Foldable.maximum'./
-multi'maximum :: forall t a. (Foldable t, Ord a) => t a -> a
-multi'maximum =
-  fromMaybe (errorWithoutStackTrace "maximum: empty structure") .
-  (multi'foldMap @MaxMaybe) (Just @a)
-
--- | The least element of a non-empty structure.
---
--- /Akin to 'Data.Foldable.minimum'./
-multi'minimum :: forall t a. (Foldable t, Ord a) => t a -> a
-multi'minimum =
-  fromMaybe (errorWithoutStackTrace "minimum: empty structure") .
-  (multi'foldMap @MinMaybe) (Just @a)
+multi'foldMap f = Data.Foldable.foldr (multi'append @x . f) (multi'empty @x)
 
 -- | The sum of the numbers in a structure.
 --
--- This is equivalent to
---
---   > multi'fold @Addition
+-- /Equivalent to @'multi'fold' \@'Addition'@./
 --
 -- /Akin to 'Data.Foldable.sum'./
 multi'sum :: (Foldable t, MultiMonoid Addition a) => t a -> a
@@ -253,93 +139,46 @@ multi'sum = multi'fold @Addition
 
 -- | The product of the numbers of a structure.
 --
+-- /Equivalent to @'multi'fold' \@'Multiplication'@./
+--
 -- /Akin to 'Data.Foldable.product'./
 multi'product :: (Foldable t, MultiMonoid Multiplication a) => t a -> a
 multi'product = multi'fold @Multiplication
 
--- | Map each element of a structure to an action, evaluate these
--- actions from left to right, and ignore the results.
---
--- /Akin to 'Data.Foldable.traverse_'./
-multi'traverse_ :: (Foldable t, Applicative f) => (a -> f b) -> t a -> f ()
-multi'traverse_ f = multi'foldr ((*>) . f) (pure ())
-
--- | 'multi'traverse_' with its arguments flipped.
---
--- /Akin to 'Data.Foldable.for_'./
-multi'for_ :: (Foldable t, Applicative f) => t a -> (a -> f b) -> f ()
-multi'for_ = flip multi'traverse_
-
--- | Evaluate each action in the structure from left to right, and ignore the
--- results.
---
--- /Akin to 'Data.Foldable.sequenceA_'./
-multi'sequence_ :: (Foldable t, Applicative f) => t (f a) -> f ()
-multi'sequence_ = multi'foldr (*>) (pure ())
-
--- | The sum of a collection of actions, generalizing 'multi'concat'.
---
--- /Akin to 'Data.Foldable.asum'./
-multi'asum :: (Foldable t, Alternative f) => t (f a) -> f a
-multi'asum = multi'foldr (<|>) empty
-
--- | Map a function over all the elements of a container and concatenate
--- the resulting lists.
---
--- /Akin to 'Data.Foldable.concatMap'./
-multi'concatMap :: Foldable t => (a -> [b]) -> t a -> [b]
-multi'concatMap f xs =
-  build (\c n -> multi'foldr (\x b -> multi'foldr c b (f x)) n xs)
-
 -- | The conjunction of a container of Bools.
 --
+-- /Equivalent to @'multi'fold' \@'And'@./
+--
 -- /Akin to 'Data.Foldable.and'./
-multi'and :: Foldable t => t Bool -> Bool
+multi'and :: (Foldable t, MultiMonoid And a) => t a -> a
 multi'and = multi'fold @And
 
 -- | The disjunction of a container of Bools.
 --
+-- /Equivalent to @'multi'fold' \@'Or'@./
+--
 -- /Akin to 'Data.Foldable.or'./
-multi'or :: Foldable t => t Bool -> Bool
+multi'or :: (Foldable t, MultiMonoid Or a) => t a -> a
 multi'or = multi'fold @Or
 
 -- | Determines whether any element of the structure satisfies the predicate.
 --
+-- /Equivalent to @'multi'foldMap' \@'Or'@./
+--
 -- /Akin to 'Data.Foldable.any'./
-multi'any :: Foldable t => (a -> Bool) -> t a -> Bool
+multi'any :: (Foldable t, MultiMonoid Or b) => (a -> b) -> t a -> b
 multi'any = multi'foldMap @Or
 
 -- | Determines whether all elements of the structure satisfy the predicate.
+--
+-- /Equivalent to @'multi'foldMap' \@'And'@./
 --
 -- /Akin to 'Data.Foldable.all'./
 multi'all :: Foldable t => (a -> Bool) -> t a -> Bool
 multi'all = multi'foldMap @And
 
--- | The largest element of a non-empty structure with respect to the given
--- comparison function.
---
--- /Akin to 'Data.Foldable.maximumBy'./
-multi'maximumBy :: Foldable t => (a -> a -> Ordering) -> t a -> a
-multi'maximumBy cmp = multi'foldr1 max'
-  where max' x y = case cmp x y of GT -> x; _ -> y
-
--- | The least element of a non-empty structure with respect to the given
--- comparison function.
---
--- /Akin to 'Data.Foldable.minimumBy'./
-multi'minimumBy :: Foldable t => (a -> a -> Ordering) -> t a -> a
-multi'minimumBy cmp = multi'foldr1 min'
-  where min' x y = case cmp x y of GT -> y; _ -> x
-
--- | The negation of 'multi'elem'.
---
--- /kin to 'Data.Foldable.notElem'./
-multi'notElem :: (Foldable t, Eq a) => a -> t a -> Bool
-multi'notElem x = not . multi'elem x
-
--- | The 'find' function takes a predicate and a structure and returns
--- the leftmost element of the structure matching the predicate, or
--- 'Nothing' if there is no such element.
+-- | Takes a predicate and a structure and returns the leftmost element of the
+-- structure matching the predicate, or 'Nothing' if there is no such element.
 --
 -- /Akin to 'Data.Foldable.find'./
 multi'find :: Foldable t => (a -> Bool) -> t a -> Maybe a
