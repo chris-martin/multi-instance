@@ -22,15 +22,7 @@ ghc-options:
 library:
   source-dirs: src
   exposed-modules:
-
     - Multi
-
-    - Multi.Foldable
-    - Multi.Monoid
-    - Multi.Phantoms
-    - Multi.Semigroup
-
-    - Multi.Internal.Base
 
 dependencies:
   - base
