@@ -9,7 +9,40 @@
 {-# LANGUAGE TypeApplications      #-}
 {-# LANGUAGE TypeSynonymInstances  #-}
 
-module Multi
+{- |
+
+The 'MultiInstance' module provides alternative versions of common typeclasses,
+augmented with a phantom type parameter @x@. The purpose of this is to deal with
+the case where a type has more than one candidate instance for the original,
+unaugmented class.
+
+= Example: Integer sum and product
+
+The canonical example of this predicament is selecting the monoid instance for a
+type which forms a ring (and thus has at least two strong candidates for
+selection as /the/ monoid), such as 'Integer'. This therefore gives rise to the
+'Data.Functor.Sum' and 'Data.Functor.Product' newtype wrappers, corresponding to
+the additive and multiplicative monoids respectively.
+
+The traditional 'Data.Foldable.fold'-based summation of a list of integers
+looks like this:
+
+>>> import Data.Foldable (fold)
+>>> import Data.Monoid (Sum (..))
+>>> getSum (fold [Sum 2, Sum 3, Sum 5]) :: Integer
+10
+
+By replacing 'Data.Foldable.fold' with 'multi'fold', whose constraint is
+'MultiMonoid' rather than 'Data.Monoid.Monoid', we can write the same thing
+without the newtype wrapper:
+
+>>> :set -XFlexibleContexts -XTypeApplications
+>>> multi'fold @Addition [2, 3, 5] :: Integer
+10
+
+-}
+
+module MultiInstance
   (
   -- * Semigroup
     MultiSemigroup (multi'append, multi'sconcat, multi'stimes)
@@ -66,16 +99,12 @@ import qualified Data.Semigroup
 -- 'Multiplication':
 --
 -- >>> :set -XFlexibleContexts -XTypeApplications
---
--- >>> multi'append @Addition (6 :: Integer) (7 :: Integer)
+-- >>> multi'append @Addition 6 7 :: Integer
 -- 13
---
--- >>> multi'append @Multiplication (6 :: Integer) (7 :: Integer)
+-- >>> multi'append @Multiplication 6 7 :: Integer
 -- 42
---
 -- >>> multi'stimes @Addition (3 :: Natural) (4 :: Integer)
 -- 12
---
 -- >>> multi'stimes @Multiplication (3 :: Natural) (4 :: Integer)
 -- 64
 class MultiSemigroup x a where
@@ -117,24 +146,20 @@ class MultiSemigroup x a where
 --  Monoid
 --------------------------------------------------------------------------------
 
--- | Akin to the 'Data.Monoid.Monoid class, but with the addition of the
+-- | Akin to the 'Data.Monoid.Monoid' class, but with the addition of the
 -- phantom type parameter @x@ which lets you specify /which/ monoid to use.
 --
 -- For example, the integers form a monoid via either 'Addition' or
 -- 'Multiplication':
 --
 -- >>> :set -XFlexibleContexts -XTypeApplications
---
--- >>> multi'fold @Addition ([] :: [Integer])
+-- >>> multi'fold @Addition [] :: Integer
 -- 0
---
--- >>> multi'fold @Addition ([2,3,5] :: [Integer])
+-- >>> multi'fold @Addition [2, 3, 5] :: Integer
 -- 10
---
--- >>> multi'fold @Multiplication ([] :: [Integer])
+-- >>> multi'fold @Multiplication [] :: Integer
 -- 1
---
--- >>> multi'fold @Multiplication ([2,3,5] :: [Integer])
+-- >>> multi'fold @Multiplication [2, 3, 5] :: Integer
 -- 30
 class MultiSemigroup x a => MultiMonoid x a where
 
@@ -161,7 +186,7 @@ multi'fold :: forall x t m. (MultiMonoid x m, Foldable t) => t m -> m
 multi'fold = multi'foldMap @x id
 
 -- | Map each element of the structure to a monoid, and combine the results.
-
+--
 -- /Akin to 'Data.Foldable.foldMap'./
 multi'foldMap :: forall x t m a. (MultiMonoid x m, Foldable t)
               => (a -> m) -> t a -> m

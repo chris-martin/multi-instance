@@ -22,7 +22,7 @@ ghc-options:
 library:
   source-dirs: src
   exposed-modules:
-    - Multi
+    - MultiInstance
 
 dependencies:
   - base
