@@ -40,6 +40,33 @@ without the newtype wrapper:
 >>> multi'fold @Addition [2, 3, 5] :: Integer
 10
 
+= The typeclasses
+
+The current list of "multi-instance" typeclasses:
+
+- 'MultiSemigroup'
+- 'MultiMonoid'
+
+= The phantom types
+
+The current list of phantom types used for the @x@ type parameter:
+
+- 'Default'
+- 'Conjunction'
+- 'Disjunction'
+- 'Addition' (alias for 'Disjunction')
+- 'Multiplication' (alias for 'Conjunction')
+- 'And' (alias for 'Conjunction')
+- 'Or' (alias for 'Disjunction')
+- 'Min'
+- 'Max'
+- 'MinMaybe'
+- 'MaxMaybe'
+- 'First'
+- 'Last'
+- 'ArrowComposition'
+- 'MultiDual'
+
 -}
 
 module MultiInstance
