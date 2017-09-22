@@ -37,12 +37,3 @@ tests:
     dependencies:
       - multi-instance
       - doctest
-
-  hedgehog:
-    source-dirs: test
-    main: hedgehog.hs
-    ghc-options:
-      - -threaded
-    dependencies:
-      - multi-instance
-      - hedgehog
