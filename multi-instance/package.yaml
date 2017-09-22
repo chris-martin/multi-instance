@@ -3,12 +3,14 @@ version: 0.0.0.1
 github: chris-martin/multi-instance
 
 synopsis: |
-  ...
+  Typeclasses augmented with a phantom type parameter
 
 description: |
-  ...
+  Provides alternative versions of common typeclasses, augmented with a phantom
+  that allows multiple instances to be specified in the case where a type has
+  more than one candidate instance for the original class.
 
-category: ...
+category: Algebra
 
 author:     Chris Martin <ch.martin@gmail.com>
 maintainer: Chris Martin <ch.martin@gmail.com>
