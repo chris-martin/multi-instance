@@ -27,7 +27,7 @@ library:
     - MultiInstance
 
 dependencies:
-  - base
+  - base >= 4.9 && < 4.10
 
 tests:
 
