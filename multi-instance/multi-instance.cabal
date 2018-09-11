@@ -1,53 +1,49 @@
+name:     multi-instance
+version:  0.0.0.2
+category: Algebra
+synopsis: Typeclasses augmented with a phantom type parameter
+
+description: Provides alternative versions of common typeclasses,
+             augmented with a phantom type parameter that allows
+             multiple instances to be specified in the case where
+             a type has more than one candidate instance for the
+             original class.
+
+homepage:    https://github.com/chris-martin/multi-instance
+bug-reports: https://github.com/chris-martin/multi-instance/issues
+
+author:     Chris Martin <ch.martin@gmail.com>
+maintainer: Chris Martin <ch.martin@gmail.com>
+
+license: Apache-2.0
+license-file: license.txt
+
 cabal-version: >= 1.10
-
--- This file has been generated from package.yaml by hpack version 0.29.7.
---
--- see: https://github.com/sol/hpack
---
--- hash: 3ece0e71224945fea731529046aa78ae1be89f9a0f24f890e2d376b5324a34e5
-
-name:           multi-instance
-version:        0.0.0.2
-synopsis:       Typeclasses augmented with a phantom type parameter
-
-description:    Provides alternative versions of common typeclasses, augmented with a phantom
-                that allows multiple instances to be specified in the case where a type has
-                more than one candidate instance for the original class.
-category:       Algebra
-homepage:       https://github.com/chris-martin/multi-instance#readme
-bug-reports:    https://github.com/chris-martin/multi-instance/issues
-author:         Chris Martin <ch.martin@gmail.com>
-maintainer:     Chris Martin <ch.martin@gmail.com>
-license:        Apache-2.0
-license-file:   license.txt
-build-type:     Simple
+build-type: Simple
 
 source-repository head
   type: git
   location: https://github.com/chris-martin/multi-instance
 
 library
-  hs-source-dirs:
-      src
+  default-language: Haskell2010
+  hs-source-dirs: src
   ghc-options: -Wall
+
   build-depends:
       base >=4.9 && <4.12
+
   exposed-modules:
       MultiInstance
-  other-modules:
-      Paths_multi_instance
-  default-language: Haskell2010
 
 test-suite doctest
+  default-language: Haskell2010
   type: exitcode-stdio-1.0
   main-is: doctest.hs
-  hs-source-dirs:
-      test
+  hs-source-dirs: test
   ghc-options: -Wall -threaded
+
   build-depends:
       base >=4.9 && <4.12
     , doctest
     , multi-instance
-  other-modules:
-      Paths_multi_instance
-  default-language: Haskell2010
