@@ -1,4 +1,0 @@
-resolver: lts-13.7
-
-packages:
-  - multi-instance
