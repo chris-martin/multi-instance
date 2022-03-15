@@ -37,10 +37,10 @@ library
     hs-source-dirs: src
     exposed-modules: MultiInstance
 
-test-suite doctest
+test-suite test-multi-instance
     import: base
     type: exitcode-stdio-1.0
-    main-is: doctest.hs
+    main-is: Main.hs
     hs-source-dirs: test
     ghc-options: -threaded
 
