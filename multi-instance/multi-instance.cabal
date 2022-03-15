@@ -21,12 +21,6 @@ license-file: license.txt
 cabal-version: >= 1.10
 build-type: Simple
 
-tested-with:
-    GHC == 8.0.2
-  , GHC == 8.2.2
-  , GHC == 8.4.3
-  , GHC == 8.6.1
-
 source-repository head
   type: git
   location: https://github.com/chris-martin/multi-instance
