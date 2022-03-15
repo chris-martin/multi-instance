@@ -1,0 +1,6 @@
+cradle:
+  cabal:
+    - path: "./multi-instance/src"
+      component: "lib:multi-instance"
+    - path: "./multi-instance/test"
+      component: "test:test-multi-instance"
