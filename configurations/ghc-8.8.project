@@ -1,0 +1,5 @@
+packages: multi-instance
+
+constraints:
+    base == 4.13.*
+  , hedgehog == 1.0.*

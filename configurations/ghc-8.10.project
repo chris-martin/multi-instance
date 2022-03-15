@@ -1,0 +1,4 @@
+packages: multi-instance
+
+constraints:
+    base == 4.14.*
