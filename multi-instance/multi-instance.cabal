@@ -45,5 +45,5 @@ test-suite test-multi-instance
     ghc-options: -threaded
 
     build-depends:
-        doctest
+        hedgehog ^>= 1.0 || ^>= 1.1
       , multi-instance
